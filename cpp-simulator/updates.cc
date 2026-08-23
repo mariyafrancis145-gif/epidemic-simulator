@@ -407,7 +407,7 @@ double updated_travel_fraction(const vector<agent>& nodes, const int cur_time){
 
 
 
-#pragma omp parallel for default(none) shared(nodes) \
+#pragma omp parallel for  default(shared) shared(nodes) \
   reduction (+: usual_travellers, actual_travellers,  \
 			 infected_distance, total_distance)
   for(count_type i = 0; i < SIZE; ++i){
@@ -523,7 +523,7 @@ void updated_lambda_c_local(const vector<agent>& nodes, community& community){
   double sum_value = 0;
   const auto SIZE = community.individuals.size();
 
-#pragma omp parallel for default(none) shared(nodes, community) reduction (+: sum_value)
+#pragma omp parallel for  default(shared) shared(nodes, community) reduction (+: sum_value)
   for(count_type i = 0; i < SIZE; ++i){
 	sum_value
 	  += nodes[community.individuals[i]].lambda_c
@@ -535,7 +535,7 @@ void updated_lambda_c_local(const vector<agent>& nodes, community& community){
 
 void updated_lambda_c_local_random_community(const vector<agent>& nodes, const vector<community>& communities, vector<house>& houses){
   const auto HOUSES_SIZE = houses.size();
-#pragma omp parallel for default(none) shared(houses, nodes)
+#pragma omp parallel for  default(shared) shared(houses, nodes)
   for(count_type i = 0;  i < HOUSES_SIZE; ++i){
 	double lambda_random_community_outgoing = 0;
 	for(const auto& indiv: houses[i].individuals){
@@ -543,7 +543,7 @@ void updated_lambda_c_local_random_community(const vector<agent>& nodes, const v
 	}
 	houses[i].lambda_random_community_outgoing = lambda_random_community_outgoing;
   }
-#pragma omp parallel for default(none) shared(houses, communities)
+#pragma omp parallel for  default(shared) shared(houses, communities)
   for(count_type i = 0; i < HOUSES_SIZE; ++i){
 	double sum_value_household = 0;
 	for(const auto& neighbouring_household: houses[i].random_households.households){
@@ -559,7 +559,7 @@ void update_lambda_nbr_cells(const vector<agent>& nodes, vector<vector<nbr_cell>
   for(count_type i=0; i<nbr_cells.size(); ++i){
 	for(count_type j=0; j<nbr_cells[i].size(); ++j){
 	  double sum_values = 0;
-#pragma omp parallel for default(none)					\
+#pragma omp parallel for  default(shared)					\
   shared(nbr_cells, communities, nodes,					\
 		 houses, i, j)									\
   reduction (+: sum_values)
@@ -696,7 +696,7 @@ casualty_stats get_infected_community(const vector<agent>& nodes, const communit
   
   const auto SIZE = community.individuals.size(); 
 
-#pragma omp parallel for default(none) shared(nodes, community)			\
+#pragma omp parallel for  default(shared) shared(nodes, community)			\
   reduction(+: errors,													\
 			susceptible, hd_area_susceptible,							\
 			exposed, hd_area_exposed,									\

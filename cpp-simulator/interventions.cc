@@ -11,7 +11,7 @@ using std::vector;
 using std::min;
 
 void get_kappa_no_intervention(vector<agent>& nodes, const vector<house>& homes, const vector<workplace>& workplaces, const vector<community>& communities, const int cur_time){
-#pragma omp parallel for default(none) shared(nodes)
+#pragma omp parallel for  default(shared) shared(nodes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
 	nodes[count].kappa_H = 1;
@@ -26,7 +26,7 @@ void get_kappa_no_intervention(vector<agent>& nodes, const vector<house>& homes,
 
 void get_kappa_case_isolation(vector<agent>& nodes, const vector<house>& homes, const vector<workplace>& workplaces, const vector<community>& communities, const int cur_time){
   const auto SIM_STEPS_PER_DAY = GLOBAL.SIM_STEPS_PER_DAY;
-#pragma omp parallel for default(none) shared(nodes)
+#pragma omp parallel for  default(shared) shared(nodes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	double time_since_symptoms = cur_time
 	  - (nodes[count].time_of_infection
@@ -58,7 +58,7 @@ void get_kappa_case_isolation(vector<agent>& nodes, const vector<house>& homes, 
 
 void get_kappa_SC(vector<agent>& nodes, const vector<house>& homes, const vector<workplace>& workplaces, const vector<community>& communities, const int cur_time){
   const auto SIM_STEPS_PER_DAY = GLOBAL.SIM_STEPS_PER_DAY;
-#pragma omp parallel for default(none) shared(nodes)
+#pragma omp parallel for  default(shared) shared(nodes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	double time_since_symptoms = cur_time
 	  - (nodes[count].time_of_infection
@@ -111,7 +111,7 @@ void get_kappa_home_quarantine(vector<agent>& nodes, vector<house>& homes, const
 	}
   }
 
-#pragma omp parallel for default(none) shared(nodes, homes)
+#pragma omp parallel for  default(shared) shared(nodes, homes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	//homes SHOULD NOT BE MODIFIED IN THIS LOOP, ONLY READ
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
@@ -136,7 +136,7 @@ void get_kappa_home_quarantine(vector<agent>& nodes, vector<house>& homes, const
 }
 
 void get_kappa_lockdown(vector<agent>& nodes, const vector<house>& homes, const vector<workplace>& workplaces, vector<community>& communities, const int cur_time){
-#pragma omp parallel for default(none) shared(nodes)
+#pragma omp parallel for  default(shared) shared(nodes)
   for(count_type count = 0; count < nodes.size(); ++count){
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
 	if(nodes[count].compliant){
@@ -192,7 +192,7 @@ void get_kappa_CI_HQ(vector<agent>& nodes, vector<house>& homes, const vector<wo
 	}
   }
 
-#pragma omp parallel for default(none) shared(nodes, homes)
+#pragma omp parallel for  default(shared) shared(nodes, homes)
   for(count_type count = 0; count < nodes.size(); ++count){
 	//homes SHOULD NOT BE MODIFIED IN THIS LOOP, ONLY READ
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
@@ -235,7 +235,7 @@ void get_kappa_CI_HQ_65P(vector<agent>& nodes, vector<house>& homes, const vecto
 	}
   }
 
-#pragma omp parallel for default(none) shared(nodes, homes)
+#pragma omp parallel for  default(shared) shared(nodes, homes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	//homes SHOULD NOT BE MODIFIED IN THIS LOOP, ONLY READ
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
@@ -317,7 +317,7 @@ void get_kappa_CI_HQ_65P_SC(vector<agent>& nodes, vector<house>& homes, const ve
 	}
   }
 
-#pragma omp parallel for default(none) shared(nodes, homes)
+#pragma omp parallel for  default(shared) shared(nodes, homes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	//homes SHOULD NOT BE MODIFIED IN THIS LOOP, ONLY READ
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
@@ -370,7 +370,7 @@ void get_kappa_CI_HQ_65P_SC_OE(vector<agent>& nodes, vector<house>& homes, const
 	}
   }
 
-#pragma omp parallel for default(none) shared(nodes, homes)
+#pragma omp parallel for  default(shared) shared(nodes, homes)
   for (count_type count = 0; count < nodes.size(); ++count){
 	//homes SHOULD NOT BE MODIFIED IN THIS LOOP, ONLY READ
 	nodes[count].kappa_T = kappa_T(nodes[count], cur_time);
@@ -465,7 +465,7 @@ void get_kappa_custom_modular(std::vector<agent>& nodes, std::vector<house>& hom
 	mark_communities_for_containment(nodes, communities,cur_time);
   }
 
-#pragma omp parallel for default(none) shared(nodes, homes, communities)
+#pragma omp parallel for  default(shared) shared(nodes, homes, communities)
   for (count_type count = 0; count < nodes.size(); ++count){
     //choose base kappas
     if(intv_params.lockdown){

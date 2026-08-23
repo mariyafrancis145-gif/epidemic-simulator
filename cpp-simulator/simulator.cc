@@ -342,7 +342,7 @@ plot_data_struct run_simulation(){
 	travel_fraction = updated_travel_fraction(nodes,time_step);
 
 	// Update lambdas for the next step
-#pragma omp parallel for default(none)									\
+#pragma omp parallel for  default(shared)									\
   shared(travel_fraction, time_step, homes, workplaces, communities, nbr_cells, nodes)
 	for (count_type j = 0; j < NUM_PEOPLE; ++j){
 	  update_lambdas(nodes[j], homes, workplaces, communities, nbr_cells, travel_fraction, time_step);
@@ -379,7 +379,7 @@ plot_data_struct run_simulation(){
 	  susceptible_lambda_RANDOM_COMMUNITY = 0;
 	double curtailed_interaction = 0, normal_interaction = 0;
 
-#pragma omp parallel for default(none) shared(nodes, GLOBAL)			\
+#pragma omp parallel for  default(shared) shared(nodes, GLOBAL)			\
   reduction(+: n_infected, n_exposed,									\
 			n_hospitalised, n_symptomatic,								\
 			n_critical, n_fatalities,									\

@@ -74,7 +74,7 @@ void modify_kappa_OE_node(agent& node){
 }
 
 void reset_home_quarantines(vector<house>& homes){
-#pragma omp parallel for default(none) shared(homes)
+#pragma omp parallel for  default(shared) shared(homes)
   for(count_type count = 0; count<homes.size(); ++count){
     homes[count].quarantined = false;
   }

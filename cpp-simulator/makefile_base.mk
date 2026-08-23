@@ -25,7 +25,7 @@ obj = initializers.o models.o interventions.o intervention_primitives.o updates.
 DEPFLAGS = -MMD -MP -MF $*.d
 
 CXX = g++
-CPPFLAGS = -Wall --std=c++14 -O3 $(DEPFLAGS) $(include_paths) $(parallel) $(timing) $(debug) $(random) -D GIT_HASH='"$(GIT_HASH)"' -D GIT_TREE_STATE='"$(GIT_TREE_STATE)"'
+CPPFLAGS = -Wall -Wno-template-body --std=c++14 -O3 $(DEPFLAGS) $(include_paths) $(parallel) $(timing) $(debug) $(random) -D GIT_HASH='"$(GIT_HASH)"' -D GIT_TREE_STATE='"$(GIT_TREE_STATE)"'
 
 all: drive_simulator check
 
