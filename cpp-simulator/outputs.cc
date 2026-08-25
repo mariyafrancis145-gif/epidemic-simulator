@@ -151,6 +151,7 @@ void output_global_params(const string& output_dir){
   fout << "num_homes: " << GLOBAL.num_homes << ";" << endl;
   fout << "num_workplaces: " << GLOBAL.num_workplaces << ";" << endl;
   fout << "num_schools: " << GLOBAL.num_schools << ";" << endl;
+  fout << "num_childcare_centres: " << GLOBAL.num_childcare_centres << ";" << endl;
   fout << "num_communities: " << GLOBAL.num_communities << ";" << endl;
 
   fout << "num_people: " << GLOBAL.num_people << ";" << endl;

@@ -375,7 +375,7 @@ plot_data_struct run_simulation()
 											   home_age_matrix.sigma,
 											   home_age_matrix.vT);
 			}
-			for (count_type w = 0; w < GLOBAL.num_schools + GLOBAL.num_workplaces; ++w)
+			for (count_type w = 0; w < workplaces.size(); ++w)
 			{
 				if (workplaces[w].workplace_type == WorkplaceType::school)
 				{
@@ -402,7 +402,7 @@ plot_data_struct run_simulation()
 				//FEATURE_PROPOSAL: make the mixing dependent on node.age_group;
 			}
 
-			for (count_type w = 0; w < GLOBAL.num_schools + GLOBAL.num_workplaces; ++w)
+			for (count_type w = 0; w < workplaces.size(); ++w)
 			{
 				updated_lambda_w_age_independent(nodes, workplaces[w]);
 				updated_lambda_project(nodes, workplaces[w]);

@@ -80,6 +80,7 @@ vector<house> init_homes(){
 vector<workplace> init_workplaces() {
   auto schoolJSON = readJSONFile(GLOBAL.input_base + "schools.json");
   auto wpJSON = readJSONFile(GLOBAL.input_base + "workplaces.json");
+  auto childcareJSON = readJSONFile(GLOBAL.input_base + "childcare_centres.json");
 
   auto school_size = schoolJSON.GetArray().Size();
   GLOBAL.num_schools = school_size;
@@ -87,7 +88,10 @@ vector<workplace> init_workplaces() {
   auto wp_size = wpJSON.GetArray().Size();
   GLOBAL.num_workplaces = wp_size;
 
-  auto size = wp_size +  school_size;
+  auto childcare_size = childcareJSON.GetArray().Size();
+  GLOBAL.num_childcare_centres = childcare_size;
+
+  auto size = wp_size + school_size + childcare_size;
   vector<workplace> wps(size);
 
   count_type index = 0;
@@ -117,6 +121,19 @@ vector<workplace> init_workplaces() {
     ++index;
   }
   assert(index == GLOBAL.num_schools + GLOBAL.num_workplaces);
+
+  // Childcare centres use the existing school mixing and closure rules.
+  for (auto &elem: childcareJSON.GetArray()){
+	wps[index].set(elem["lat"].GetDouble(),
+			   elem["lon"].GetDouble(),
+			   WorkplaceType::school);
+    wps[index].age_independent_mixing = 0;
+	if(GLOBAL.USE_AGE_DEPENDENT_MIXING){
+	  wps[index].age_dependent_mixing.resize(GLOBAL.NUM_AGE_GROUPS, 0);
+	}
+    ++index;
+  }
+  assert(index == GLOBAL.num_schools + GLOBAL.num_workplaces + GLOBAL.num_childcare_centres);
   return wps;
 }
 
@@ -735,7 +752,13 @@ vector<agent> init_nodes(){
 	  }
 	}
 	else{
-		nodes[i].work_ward = -1;
+	  nodes[i].work_ward = -1;
+	}
+	if(elem.HasMember("childcare") && elem["childcare"].IsNumber()){
+	  nodes[i].workplace_type = WorkplaceType::school;
+	  nodes[i].workplace = GLOBAL.num_schools + GLOBAL.num_workplaces
+		+ int(elem["childcare"].GetDouble());
+	  nodes[i].workplace_subnetwork = age;
 	}
 
 	//Initialize cohorts - other definitions are in cohorts.cc

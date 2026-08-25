@@ -52,6 +52,7 @@ outputfiles = {
     "houses":"houses.json",
     "workplaces":"workplaces.json",
     "schools":"schools.json",
+    "childcare_centres": "childcare_centres.json",
     "wardCentreDistance":"wardCentreDistance.json",
     "commonArea":"commonArea.json",
     "fractionPopulation":"fractionPopulation.json",
@@ -177,6 +178,9 @@ class City:
 
         self.workers = None
         self.schoolers = None
+        self.childcare_users = None
+        self.childcare_centres = None
+        self.num_childcare_centres = None
 
         #This is what we will eventually generate
         self.houses = None
@@ -496,6 +500,7 @@ class City:
         self.individuals = []
         self.workers = [[] for _ in range(self.nwards)]
         self.schoolers = [[] for _ in range(self.nwards)]
+        self.childcare_users = [[] for _ in range(self.nwards)]
         
         employed_frac = self.wardData["Employed"] / self.wardData["totalPopulation"]
         self.wardData["generatedPopulation"] = 0
@@ -540,13 +545,15 @@ class City:
                     p["employed"]=0
                     p["workplaceType"] = workplacesTypes[None]
 
-                elif age >= 3 and age < 15 :        # decide about their school
-                    
-                    p["employed"]=0
-                    p["workplaceType"] = workplacesTypes["school"]
-                    #assuming they all go to school
-                    self.schoolers[wardIndex].append(pid)
+                elif age >= 3 and age < 6:          # childcare ages
+                    p["employed"] = 0
+                    p["workplaceType"] = workplacesTypes[None]
+                    self.childcare_users[wardIndex].append(pid)
 
+                elif age >= 6 and age < 15:          # school ages
+                    p["employed"] = 0
+                    p["workplaceType"] = workplacesTypes["school"]
+                    self.schoolers[wardIndex].append(pid)
                 elif age >= 15 and age < 65:        # decide about employment/school
                     
                     eprob = employed_frac.iloc[wardIndex]
@@ -620,6 +627,58 @@ class City:
             return  officeType['IT']
         else:
             return  officeType['Other']
+    @measure
+    def assignChildcareCentres(self):
+        assert self.individuals is not None
+        assert self.childcare_users is not None
+
+        self.childcare_centres = []
+        childcare_pids = [
+            pid for ward_users in self.childcare_users for pid in ward_users
+        ]
+        if not childcare_pids:
+            self.num_childcare_centres = 0
+            return
+
+        # Mumbai City + Mumbai Suburban, June 2024: 5,147 operational
+        # Anganwadi centres serving 379,279 children aged 0--6.  The model
+        # assigns ages 3--5, estimated as 3/7 of that age range.
+        MUMBAI_AWCS = 926 + 4221
+        MUMBAI_CHILDREN_3_TO_5 = (64790 + 314489) * 3 / 7
+        number_of_centres = max(
+            1,
+            round(len(childcare_pids) * MUMBAI_AWCS / MUMBAI_CHILDREN_3_TO_5)
+        )
+
+        ward_weights = normalise(
+            self.wardData["generatedPopulation"].astype(float).tolist()
+        )
+        for cid in range(number_of_centres):
+            wardIndex = int(np.random.choice(range(self.nwards), p=ward_weights))
+            lat, lon = self.sampleRandomLatLon(wardIndex)
+            centre = {
+                "ID": cid,
+                "wardIndex": wardIndex,
+                "lat": lat,
+                "lon": lon,
+                "enrolled": 0,
+            }
+            if self.has_slums:
+                centre["slum"] = int(self.wardData["hd_flag"].iloc[wardIndex])
+            self.childcare_centres.append(centre)
+
+        for pid in childcare_pids:
+            child = self.individuals[pid]
+            distances = [
+                distance(child["lat"], child["lon"], centre["lat"], centre["lon"])
+                for centre in self.childcare_centres
+            ]
+            centre_id = int(np.argmin(distances))
+            child["childcare"] = centre_id
+            child["childcareCentreDistance"] = distances[centre_id]
+            self.childcare_centres[centre_id]["enrolled"] += 1
+
+        self.num_childcare_centres = number_of_centres
 
     @measure
     def assignSchools(self):
@@ -701,6 +760,7 @@ class City:
         print("")
         print(f"Number of houses: {self.num_houses}")
         print(f"Number of schools: {self.num_schools}")
+        print(f"Number of childcare centres: {self.num_childcare_centres}")
         print(f"Number of workplaces: {self.num_workplaces}")
         print(f"Number of workers: {self.num_workers}")
         print("")
@@ -712,6 +772,7 @@ class City:
         self.rescale(n)
         self.createHouses()
         self.populateHouses()
+        self.assignChildcareCentres()
         self.assignSchools()
         self.assignWorkplaces()
         print("")
@@ -722,6 +783,7 @@ class City:
         assert self.houses is not None
         assert self.individuals is not None
         assert self.schools is not None
+        assert self.childcare_centres is not None
         assert self.workplaces is not None
         
         assert output_dir is not None
@@ -759,6 +821,8 @@ class City:
             f.write(json.dumps(self.individuals))
         with open(os.path.join(output_dir,outputfiles['schools']), "w+") as f:
             f.write(json.dumps(self.schools))
+        with open(os.path.join(output_dir,outputfiles['childcare_centres']), "w+") as f:
+            f.write(json.dumps(self.childcare_centres))
         with open(os.path.join(output_dir,outputfiles['workplaces']), "w+") as f:
             f.write(json.dumps(self.workplaces))
         with open(os.path.join(output_dir,outputfiles['commonArea']), "w+") as f:

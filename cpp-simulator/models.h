@@ -306,6 +306,7 @@ struct global_params{
   count_type num_homes = 25000;
   count_type num_workplaces = 5000;
   count_type num_schools = 0;
+  count_type num_childcare_centres = 0;
   count_type num_communities = 198;
   count_type num_cohorts = 300;
   count_type num_people = 100000;

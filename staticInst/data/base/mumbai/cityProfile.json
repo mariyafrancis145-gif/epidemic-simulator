@@ -26,5 +26,11 @@
 	"bins": ["0-100", "100-200", "200-300", "300-400", "400-500", "500-600", "600-700", "700-800", "800-900","900+"],
 	"weights": [0.0185, 0.1204, 0.2315, 0.2315, 0.1574, 0.0889, 0.063, 0.0481, 0.0408,0],
 	"_comment": "Don't seem to have Mumbai data. This is from Bangkok. Need to add the source here."
+    },
+    "childcareCentres": {
+    "ageRange": "3-5",
+    "operationalCentres": 5147,
+    "childrenAge0To6": 379279,
+    "source": "Maharashtra Anganwadi data, June 2024"
     }
 }
