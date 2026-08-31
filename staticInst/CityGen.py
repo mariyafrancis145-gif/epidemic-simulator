@@ -468,7 +468,7 @@ class City:
         self.houses = []
         hid = 0
         for wardIndex in range(self.nwards):
-            pop = self.wardData["totalPopulation"][wardIndex]
+            pop = self.wardData["totalPopulation"].iloc[wardIndex]
             currpop = 0
 
             #creating houses
@@ -478,7 +478,7 @@ class City:
                 h["wardIndex"]=wardIndex
 
                 if self.has_slums:
-                    h["slum"] = int(self.wardData["hd_flag"][wardIndex])
+                    h["slum"] = int(self.wardData["hd_flag"].iloc[wardIndex])
 
                 s = self.sampleHouseholdSize()
                 h["size"]=s
@@ -649,10 +649,12 @@ class City:
             1,
             round(len(childcare_pids) * MUMBAI_AWCS / MUMBAI_CHILDREN_3_TO_5)
         )
+        childcare_counts_by_ward = [
+        len(self.childcare_users[wardIndex])
+        for wardIndex in range(self.nwards)
+        ]
+        ward_weights = normalise(childcare_counts_by_ward)
 
-        ward_weights = normalise(
-            self.wardData["generatedPopulation"].astype(float).tolist()
-        )
         for cid in range(number_of_centres):
             wardIndex = int(np.random.choice(range(self.nwards), p=ward_weights))
             lat, lon = self.sampleRandomLatLon(wardIndex)
@@ -853,7 +855,7 @@ class City:
         if folderExists(Path(input_dir,'presampled-points')):
             self.set_presampled_points(input_dir)
         else:
-            self.set_geoDF(input_dir) 
+            self.set_geoDF(input_dir)   
         self.reorder_wardData_Rows()
         self.set_community_centres()
 
@@ -941,7 +943,84 @@ def validate_householdsizes(city, df_ind, plots_folder=None):
     else:
         plt.show()
     plt.close()
+@measure
+def validate_childcaresizes(city, df_ind, plots_folder=None):
 
+    df_childcare = df_ind.dropna(subset=["childcare"])
+
+    if df_childcare.empty:
+        print("No childcare users generated; skipping childcare-size validation.")
+        return
+
+    # Number of children assigned to each childcare centre
+    centre_sizes = (
+        df_childcare
+        .groupby("childcare")["id"]
+        .count()
+    )
+
+    # Childcare size bins
+    bins = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, np.inf]
+
+    labels = [
+        "0-10",
+        "10-20",
+        "20-30",
+        "30-40",
+        "40-50",
+        "50-60",
+        "60-70",
+        "70-80",
+        "80-90",
+        "90+"
+    ]
+
+    # Put every centre into a size bin
+    size_groups = pd.cut(
+        centre_sizes,
+        bins=bins,
+        labels=labels,
+        right=False
+    )
+
+    # Proportion of centres in each bin
+    size_distribution = (
+        size_groups
+        .value_counts(normalize=True)
+        .sort_index()
+    )
+
+    x = np.arange(len(labels))
+
+    plt.bar(
+        x,
+        size_distribution.values,
+        width=0.5,
+        alpha=0.5,
+        label="Instantiation"
+    )
+
+    plt.xticks(x, labels, rotation=45)
+
+    plt.xlabel("Childcare centre size")
+    plt.ylabel("Density")
+    plt.title("Distribution of childcare centre sizes")
+
+    plt.grid(True)
+    plt.legend()
+
+    if plots_folder is not None:
+        plt.savefig(
+            os.path.join(
+                plots_folder,
+                "childcare_size.png"
+            ),
+            bbox_inches="tight"
+        )
+    else:
+        plt.show()
+
+    plt.close()
 @measure
 def validate_schoolsizes(city, df_ind, plots_folder=None):
     weights = city.schoolsize_weights
@@ -1042,6 +1121,7 @@ def validate(city, plots_folder=None):
     if city.different_age_bins:
         validate_slum_ages(city, df_ind,  plots_folder=plots_folder)
     validate_householdsizes(city, df_ind, plots_folder=plots_folder)
+    validate_childcaresizes(city,df_ind,plots_folder=plots_folder)
     validate_schoolsizes(city, df_ind,  plots_folder=plots_folder)
     validate_workplacesizes(city, df_ind, plots_folder=plots_folder)
     validate_commutedistances(city, df_ind, df_work, plots_folder=plots_folder)
