@@ -62,7 +62,8 @@ outputfiles = {
 workplacesTypes = {
     None: 0,
     "office": 1,
-    "school": 2
+    "school": 2,
+    "childcare": 3
     }
 
 officeType = {
@@ -268,35 +269,59 @@ class City:
                             )
     
     def set_geoDF(self, input_dir):
-        assert fileExists(Path(input_dir, inputfiles["citygeojson"])), f"{inputfiles['citygeojson']} missing"
-        
-        geoDF = gpd.read_file(Path(input_dir,inputfiles["citygeojson"]))
+    assert fileExists(
+        Path(input_dir, inputfiles["citygeojson"])
+    ), f"{inputfiles['citygeojson']} missing"
 
-        necessary_cols = ['wardNo', 'wardName', 'geometry']
-        for col in necessary_cols:
-            assert col in geoDF.columns
-        geoDF = geoDF[necessary_cols]
-        geoDF['wardBounds'] = geoDF.apply(lambda row: MultiPolygon(row['geometry']).bounds, axis=1)
-        geoDF['wardCentre'] = geoDF.apply(
-            lambda row: (
-                MultiPolygon(row['geometry']).centroid.x, 
-                MultiPolygon(row['geometry']).centroid.y
-                ), 
-            axis=1
-            )
-        geoDF['wardNo'] = geoDF['wardNo'].astype(int)
+    geoDF = gpd.read_file(
+        Path(input_dir, inputfiles["citygeojson"])
+    )
 
-        self.wardData = self.wardData.merge(
-            geoDF, 
-            on="wardName",
-            validate="one_to_one")
-        
-        self.check_merged_df(self.wardData, "city.geojson")
-        self.wardData = (self.wardData
-                             .drop(['wardNo_y'], axis=1)
-                             .rename(columns={'wardNo_x':'wardNo'})
-                            )
+    necessary_cols = [
+        "wardNo",
+        "wardName",
+        "geometry"
+    ]
 
+    for col in necessary_cols:
+        assert col in geoDF.columns
+
+    geoDF = geoDF[necessary_cols]
+
+    geoDF["wardBounds"] = geoDF.apply(
+        lambda row: MultiPolygon(
+            row["geometry"]
+        ).bounds,
+        axis=1
+    )
+
+    geoDF["wardCentre"] = geoDF.apply(
+        lambda row: (
+            MultiPolygon(row["geometry"]).centroid.x,
+            MultiPolygon(row["geometry"]).centroid.y
+        ),
+        axis=1
+    )
+
+    geoDF["wardNo"] = geoDF["wardNo"].astype(int)
+
+    self.wardData = self.wardData.merge(
+        geoDF,
+        on="wardName",
+        validate="one_to_one"
+    )
+
+    self.check_merged_df(
+        self.wardData,
+        "city.geojson"
+    )
+
+    self.wardData = (
+        self.wardData
+        .drop(["wardNo_y"], axis=1)
+        .rename(columns={"wardNo_x": "wardNo"})
+    )
+       
     def set_ODMatrix(self, input_dir):
         assert self.nwards is not None
         
@@ -538,23 +563,30 @@ class City:
                     
                 # Currently, ages of household members chosen independently.
                 
-                p["age"] = age
+                age = int(age)
 
-                if age < 3:                         # toddlers stay at home
+# Random exact month within the sampled completed year
+                age_in_months = age * 12 + int(np.random.randint(0, 12))
+
+# Keep both values
+                p["age"] = age
+                p["age_in_months"] = age_in_months
+
+                if age_in_months < 36:                        # toddlers stay at home
                     
                     p["employed"]=0
                     p["workplaceType"] = workplacesTypes[None]
 
-                elif age >= 3 and age < 6:          # childcare ages
+                elif age_in_months >= 36 and age_in_months < 72:      # childcare ages
                     p["employed"] = 0
-                    p["workplaceType"] = workplacesTypes[None]
+                    p["workplaceType"] = workplacesTypes["childcare"]
                     self.childcare_users[wardIndex].append(pid)
 
-                elif age >= 6 and age < 15:          # school ages
+                elif age_in_months >= 72 and age_in_months < 180:          # school ages
                     p["employed"] = 0
                     p["workplaceType"] = workplacesTypes["school"]
                     self.schoolers[wardIndex].append(pid)
-                elif age >= 15 and age < 65:        # decide about employment/school
+                elif age_in_months >= 180 and age_in_months < 780:        # decide about employment/school
                     
                     eprob = employed_frac.iloc[wardIndex]
                     if (self.has_slums and p["slum"]==1):
@@ -579,7 +611,7 @@ class City:
                         self.wardData.at[wardIndex,"generatedEmployed"]+=1
                     else:
                         p["employed"] = 0
-                        if age < 20:
+                        if age_in_months < 240:
                             p["workplaceType"] = workplacesTypes["school"]
                             # All the unemployed in this age bracket go to school
                             self.schoolers[wardIndex].append(pid)
@@ -852,15 +884,15 @@ class City:
         self.set_demographics(input_dir)
         self.set_employments(input_dir)
         self.set_ODMatrix(input_dir)
-        if folderExists(Path(input_dir,'presampled-points')):
+        if folderExists(Path(input_dir, "presampled-points")):
             self.set_presampled_points(input_dir)
         else:
-            self.set_geoDF(input_dir)   
+            self.set_geoDF(input_dir) 
         self.reorder_wardData_Rows()
         self.set_community_centres()
 
 
-# In[ ]:
+
 
 
 @measure
@@ -1360,4 +1392,3 @@ def validate_old(city, plots_folder=None):
         plt.show()
     plt.close()
     print("done.",flush=True)
-
