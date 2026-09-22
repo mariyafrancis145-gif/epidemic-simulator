@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from computeDistributions import *
 
 from functools import wraps
@@ -83,9 +84,12 @@ def fileExists(path):
 def folderExists(path):
     return os.path.exists(path)
 
-def normalise(raw): 
+
+
+
+def normalise(raw):
     # Scale everything so that the array sums to 1
-    # It doesn't quite, due to floating point errors, but 
+    # It doesn't quite, due to floating point errors, but
     # np.random.choice does not complain anymore.
     s = sum([float(i) for i in raw]); return [float(i)/s for i in raw]
 
@@ -107,7 +111,7 @@ def distance(lat1, lon1, lat2, lon2):
 
     dlat = math.radians(lat2-lat1)
     dlon = math.radians(lon2-lon1)
-    a = (math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) 
+    a = (math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1))
          * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2))
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     d = radius * c
@@ -116,17 +120,17 @@ def distance(lat1, lon1, lat2, lon2):
 
 def workplaces_size_distribution(a=3.26, c=0.97, m_max=2870):
     # This is a particular version of the power law:
-    # Pr[ m > x ] is proportional to x^{-c}. 
+    # Pr[ m > x ] is proportional to x^{-c}.
     # This is additionally slightly adjusted in this implementation
-    # so that the max workplace size = m_max, and the size is always 
-    # at least 1. 
-    # RP: There is also a scaling by a parameter 'a', which I don't 
+    # so that the max workplace size = m_max, and the size is always
+    # at least 1.
+    # RP: There is also a scaling by a parameter 'a', which I don't
     # follow why, but leaving the implementation as earlier.
     # RP: should add a reference for why these a,c,m_max were chosen.
 
     mirror_cdf = np.zeros(m_max, dtype=float)   # mirror_cdf[i] = Pr[ size > i]
     for m in range(m_max):
-        mirror_cdf[m] =(  (((1 + (m_max/a))/((1 + (m/a)))**c) - 1) / 
+        mirror_cdf[m] =(  (((1 + (m_max/a))/((1 + (m/a)))**c) - 1) /
                         (((1 + (m_max/a))**c)-1))
 
     p_n = np.insert((np.diff(mirror_cdf) * (-1)), 0, 0)  
@@ -194,7 +198,10 @@ class City:
         self.num_schools = None
         self.num_workers = None
 
-    
+
+
+
+   
     def save_random_seeds(self):
         self.state_np_random = np.random.get_state()
 
@@ -244,10 +251,10 @@ class City:
         self.nwards = demographics['wardIndex'].shape[0]
         self.totalPop = demographics['totalPopulation'].sum()
         self.wardData = demographics
-                
+               
     def set_employments(self, input_dir):
         assert fileExists(Path(input_dir, inputfiles["employment"])), f"{inputfiles['employment']} missing"
-        
+       
         employments = pd.read_csv(Path(input_dir,inputfiles["employment"]))
         necessary_cols = ["wardNo", "wardName", "Employed"]
         for col in necessary_cols:
@@ -258,125 +265,153 @@ class City:
         employments['Employed'] = employments['Employed'].astype(int)
 
         self.wardData = self.wardData.merge(
-            employments, 
+            employments,
             on="wardName",
             validate="one_to_one")
-        
+       
         self.check_merged_df(self.wardData, "employment.csv")
         self.wardData = (self.wardData
                              .drop(['wardNo_y'], axis=1)
                              .rename(columns={'wardNo_x':'wardNo'})
                             )
-    
+   
     def set_geoDF(self, input_dir):
-    assert fileExists(
-        Path(input_dir, inputfiles["citygeojson"])
-    ), f"{inputfiles['citygeojson']} missing"
+        assert fileExists(
+            Path(input_dir, inputfiles["citygeojson"])
+        ), f"{inputfiles['citygeojson']} missing"
 
-    geoDF = gpd.read_file(
-        Path(input_dir, inputfiles["citygeojson"])
-    )
 
-    necessary_cols = [
-        "wardNo",
-        "wardName",
-        "geometry"
-    ]
 
-    for col in necessary_cols:
-        assert col in geoDF.columns
 
-    geoDF = geoDF[necessary_cols]
+        geoDF = gpd.read_file(
+            Path(input_dir, inputfiles["citygeojson"])
+        )
 
-    geoDF["wardBounds"] = geoDF.apply(
-        lambda row: MultiPolygon(
-            row["geometry"]
-        ).bounds,
-        axis=1
-    )
 
-    geoDF["wardCentre"] = geoDF.apply(
-        lambda row: (
-            MultiPolygon(row["geometry"]).centroid.x,
-            MultiPolygon(row["geometry"]).centroid.y
-        ),
-        axis=1
-    )
 
-    geoDF["wardNo"] = geoDF["wardNo"].astype(int)
 
-    self.wardData = self.wardData.merge(
-        geoDF,
-        on="wardName",
-        validate="one_to_one"
-    )
+        necessary_cols = [
+            "wardNo",
+            "wardName",
+            "geometry"
+        ]
 
-    self.check_merged_df(
-        self.wardData,
-        "city.geojson"
-    )
 
-    self.wardData = (
-        self.wardData
-        .drop(["wardNo_y"], axis=1)
-        .rename(columns={"wardNo_x": "wardNo"})
-    )
+
+
+        for col in necessary_cols:
+            assert col in geoDF.columns
+
+
+
+
+        geoDF = geoDF[necessary_cols]
+
+
+
+
+        geoDF["wardBounds"] = geoDF.apply(
+            lambda row: MultiPolygon(
+                row["geometry"]
+            ).bounds,
+            axis=1
+        )
+
+
+
+
+        geoDF["wardCentre"] = geoDF.apply(
+            lambda row: (
+                MultiPolygon(row["geometry"]).centroid.x,
+                MultiPolygon(row["geometry"]).centroid.y
+            ),
+            axis=1
+        )
+
+
+
+
+        geoDF["wardNo"] = geoDF["wardNo"].astype(int)
+
+
+
+
+        self.wardData = self.wardData.merge(
+            geoDF,
+            on="wardName",
+            validate="one_to_one"
+        )
+
+
+        self.check_merged_df(
+            self.wardData,
+            "city.geojson"
+        )
+
+
+
+
+        self.wardData = (
+            self.wardData
+            .drop(["wardNo_y"], axis=1)
+            .rename(columns={"wardNo_x": "wardNo"})
+        )
        
     def set_ODMatrix(self, input_dir):
         assert self.nwards is not None
-        
+       
         if fileExists(Path(input_dir, inputfiles["ODMatrix"])):
             #do something
             ODMatrix = pd.read_csv(Path(input_dir,inputfiles['ODMatrix'])).sort_values('wardNo')
             self.checkRows(ODMatrix,"ODMatrix")
-            
+           
             cols = [a for a in ODMatrix.columns if a != "wardNo"]
             for i in range(self.nwards):
                 assert int(cols[i]) == i+1, f"Mismatch in ODMatrix.csv: col {i+1} has {cols[i]}"
-            
+           
             _ = ODMatrix.pop("wardNo").astype(float)
 
             self.ODMatrix = ODMatrix.values
         else:
             self.ODMatrix = [[(1/self.nwards) for i in range(self.nwards)] for j in range(self.nwards)]
-            
+           
         for i in range(self.nwards):
             self.ODMatrix[i] = normalise(self.ODMatrix[i])
        
     def set_presampled_points(self, input_dir):
         assert folderExists(Path(input_dir,'presampled-points')), "'presampled-points' missing"
         assert self.nwards is not None
-        
+       
         self.presampled_points = []
         for i in range(self.nwards):
             assert fileExists(Path(input_dir,"presampled-points",f"{i}.csv")), f"presampled-points/{i}.csv missing"
             df = pd.read_csv(Path(input_dir,"presampled-points",f"{i}.csv"),names=["lat","lon"]).astype(float)
             self.presampled_points.append(df)
-    
+   
     def processAgeGivenHH(self, input_dir):
         assert fileExists(Path(input_dir, inputfiles["cityprofile"])), f"{inputfiles['cityprofile']} missing"
         with open(Path(input_dir, inputfiles["cityprofile"]),"r") as file:
             cityprofiledata = json.load(file)
         assert "ageGivenHouseholdSize" in cityprofiledata.keys()
-        
+       
         ageGivenHHDist = cityprofiledata['ageGivenHouseholdSize']['weights']
         for i in range(len(ageGivenHHDist)):
             ageGivenHHDist[i] = normalise(ageGivenHHDist[i])
             assert len(ageGivenHHDist[i]) == len(self.age_bins)
         print("(age_given_household_size_distribution provided)")
         self.ageGivenHHDist = ageGivenHHDist
-        
+       
     def set_city_profile(self, input_dir):
         assert fileExists(Path(input_dir, inputfiles["cityprofile"])), f"{inputfiles['cityprofile']} missing"
         with open(Path(input_dir, inputfiles["cityprofile"]),"r") as file:
             cityprofiledata = json.load(file)
-        
+       
         if "city" in cityprofiledata.keys():
             self.name = cityprofiledata['city']
         else:
             self.name = "unknown"
-            
-        if ("distance_kernel_a" in cityprofiledata.keys() 
+           
+        if ("distance_kernel_a" in cityprofiledata.keys()
             and "distance_kernel_b" in cityprofiledata.keys()):
             print("(Distance kernel parameters provided.)")
             self.a_commuter_distance = cityprofiledata['distance_kernel_a']
@@ -384,18 +419,18 @@ class City:
         else:
             self.a_commuter_distance = 4   # From the Thailand paper
             self.b_commuter_distance = 3.8 # From the Thailand paper
-            
+           
         self.householdsize_bins = cityprofiledata['householdSize']['bins']
         self.householdsize_weights = normalise(cityprofiledata['householdSize']['weights'])
         assert len(self.householdsize_bins) == len(self.householdsize_weights), "household bins and weights differ in lengths"
-        
+       
         if "age_non_slum" in cityprofiledata:
             print("Using different age distributions for slums and non-slums.")
             self.different_age_bins = True
             self.age_bins = cityprofiledata['age_non_slum']['bins']
             self.age_weights = normalise(cityprofiledata['age_non_slum']['weights'])
             assert len(self.age_bins) == len(self.age_weights), "age_non_slum bins and weights differ in lengths"
-        
+       
             self.age_slum_bins = cityprofiledata['age_slum']['bins']
             self.age_slum_weights = normalise(cityprofiledata['age_slum']['weights'])
             assert len(self.age_slum_bins) == len(self.age_slum_weights), "age_slum bins and weights differ in lengths"
@@ -405,16 +440,16 @@ class City:
             assert len(self.age_bins) == len(self.age_weights), "age bins and weights differ in lengths"    
             self.age_slum_bins = self.age_bins
             self.age_slum_weights = self.age_weights
-        
+       
         if "ageGivenHouseholdSize" in cityprofiledata.keys():
             self.processAgeGivenHH(input_dir)
-    
+   
         self.schoolsize_bins = cityprofiledata['schoolsSize']['bins']
         self.schoolsize_weights = normalise(cityprofiledata['schoolsSize']['weights'])
         assert len(self.schoolsize_bins) == len(self.schoolsize_weights), "schoolsSize bins and weights differ in lengths"        
-        
+       
         self.m_max_commuter_distance = cityprofiledata['maxWorkplaceDistance']
-        
+       
     def sampleRandomLatLon(self, wardIndex):
         if self.presampled_points is not None:
             i = np.random.randint(0,self.presampled_points[wardIndex].shape[0])
@@ -430,33 +465,33 @@ class City:
                     return (lat,lon)
 
     def rescale(self, n):
-        assert self.wardData is not None 
-        
+        assert self.wardData is not None
+       
         scale = n / self.totalPop
-        
+       
         self.wardData["totalPopulation"] = (self.wardData["totalPopulation"] * scale).astype(int)
         self.wardData["Employed"] = (self.wardData["Employed"] * scale).astype(int)
 
         self.totalPop = self.wardData['totalPopulation'].sum()
-        
+       
     def sampleAge_non_slum(self):
         assert self.age_bins is not None and self.age_weights is not None
         return sampleBinsWeights(self.age_bins, self.age_weights)
-        
+       
     def sampleAge_slum(self):
         assert self.age_slum_bins is not None and self.age_slum_weights is not None
         return sampleBinsWeights(self.age_slum_bins, self.age_slum_weights)
 
     def sampleAgeGivenHousehold(self, size):
-        # Assuming that the bins for this are of the form 
+        # Assuming that the bins for this are of the form
         # [1,2,3,...,m-1,m+]. If not, this has to be modified.
 
         assert self.ageGivenHHDist is not None
         size_bucket = min(size, len(self.ageGivenHHDist)) - 1
         assert size_bucket >= 0
-        
+       
         return sampleBinsWeights(self.age_bins, self.ageGivenHHDist[size_bucket])
-    
+   
     def sampleHouseholdSize(self):
         assert self.householdsize_bins is not None and self.householdsize_weights is not None
         return sampleBinsWeights(self.householdsize_bins, self.householdsize_weights)
@@ -473,7 +508,7 @@ class City:
     def set_community_centres(self):
         assert self.nwards is not None
         community_centres = []
-        
+       
         for wardIndex in range(self.nwards):
             if self.presampled_points is not None:
                 (lat,lon) = self.sampleRandomLatLon(wardIndex)
@@ -487,7 +522,7 @@ class City:
         assert self.community_centres is not None
         (latc,lonc) = self.community_centres[wardIndex]
         return distance(lat,lon,latc,lonc)
-        
+       
     @measure
     def createHouses(self):
         self.houses = []
@@ -520,19 +555,19 @@ class City:
     @measure
     def populateHouses(self):
         assert self.houses is not None
-        
+       
         pid = 0
         self.individuals = []
         self.workers = [[] for _ in range(self.nwards)]
         self.schoolers = [[] for _ in range(self.nwards)]
         self.childcare_users = [[] for _ in range(self.nwards)]
-        
+       
         employed_frac = self.wardData["Employed"] / self.wardData["totalPopulation"]
         self.wardData["generatedPopulation"] = 0
         self.wardData["generatedEmployed"] = 0
         generatedPop = 0
         num_workers = 0
-        
+       
         for h in self.houses:
             size = h["size"]
             wardIndex = h["wardIndex"]
@@ -552,17 +587,17 @@ class City:
 
                 if self.has_slums:
                     p["slum"] = h["slum"]
-                
+               
                 if self.ageGivenHHDist is not None:
                     age = self.sampleAgeGivenHousehold(size)
                 elif (self.has_slums and p["slum"]==1):
                     age = self.sampleAge_slum()
                 else:
                     age = self.sampleAge_non_slum()
-                
-                    
+               
+                   
                 # Currently, ages of household members chosen independently.
-                
+               
                 age = int(age)
 
 # Random exact month within the sampled completed year
@@ -572,31 +607,40 @@ class City:
                 p["age"] = age
                 p["age_in_months"] = age_in_months
 
-                if age_in_months < 36:                        # toddlers stay at home
-                    
+
+
+
+                if age_in_months < 24:                        # toddlers stay at home
+                   
                     p["employed"]=0
                     p["workplaceType"] = workplacesTypes[None]
 
-                elif age_in_months >= 36 and age_in_months < 72:      # childcare ages
+
+
+
+                elif age_in_months >= 24 and age_in_months < 60:      # childcare ages
                     p["employed"] = 0
                     p["workplaceType"] = workplacesTypes["childcare"]
                     self.childcare_users[wardIndex].append(pid)
 
-                elif age_in_months >= 72 and age_in_months < 180:          # school ages
+
+
+
+                elif age_in_months >= 60 and age_in_months < 180:          # school ages
                     p["employed"] = 0
                     p["workplaceType"] = workplacesTypes["school"]
                     self.schoolers[wardIndex].append(pid)
                 elif age_in_months >= 180 and age_in_months < 780:        # decide about employment/school
-                    
+                   
                     eprob = employed_frac.iloc[wardIndex]
                     if (self.has_slums and p["slum"]==1):
-                        eprob_adjusted = eprob / sum([self.age_slum_weights[a] for a in range(self.age_slum_bins.index("15-19"),self.age_slum_bins.index("65-69"))])  #Probability that you are employed given 15 <= age < 65 
+                        eprob_adjusted = eprob / sum([self.age_slum_weights[a] for a in range(self.age_slum_bins.index("15-19"),self.age_slum_bins.index("65-69"))])  #Probability that you are employed given 15 <= age < 65
                     else:
                         eprob_adjusted = eprob / sum([self.age_weights[a] for a in range(self.age_bins.index("15-19"),self.age_bins.index("65-69"))])
-                        
-                        
+                       
+                       
                     if(np.random.uniform(0,1) < eprob_adjusted):
-                        
+                       
                         #person is employed
                         p["employed"] = 1
 
@@ -621,17 +665,17 @@ class City:
                     #decide about seniors
                     p["employed"] = 0
                     p["workplaceType"] = workplacesTypes[None]
-                    
+                   
                 self.individuals.append(p)
                 self.wardData.at[wardIndex,"generatedPopulation"]+=1
                 generatedPop +=1
                 pid+=1
         self.num_individuals = generatedPop
         self.num_workers = num_workers
-        
+       
     def sampleOfficeType(self, size):
         num_gov = 0
-        num_ites = 0 
+        num_ites = 0
         num_sez = 0
         # Previous version had these as global variables. Not sure what they were used for
         #Large workplace at SEZs, officeType=1
@@ -665,55 +709,242 @@ class City:
         assert self.childcare_users is not None
 
         self.childcare_centres = []
-        childcare_pids = [
-            pid for ward_users in self.childcare_users for pid in ward_users
-        ]
-        if not childcare_pids:
+
+        # ==============================================================
+        # PARAMETERS
+        # ==============================================================
+
+        # Expected average number of enrolled children per centre.
+        # Used to determine total facility count.
+        TARGET_AVG_CAPACITY = 55
+
+        # Maximum permitted enrolment in one childcare centre.
+        MAX_CAPACITY = 100
+
+        # NFHS-6 Mumbai Suburban participation rate (aged 2-4).
+        PARTICIPATION_RATE = 0.459
+
+        # ==============================================================
+        # STEP 1: SELECT CHILDREN ATTENDING PRESCHOOL
+        # ==============================================================
+
+        enrolled_by_ward = []
+
+        for wardIndex in range(self.nwards):
+            ward_users = self.childcare_users[wardIndex]
+            enrolled = []
+
+            for pid in ward_users:
+                # Pre-initialize default unassigned state for all children
+                child = self.individuals[pid]
+                child["childcare"] = -1
+                child["childcareCentreDistance"] = None
+
+                if np.random.random() < PARTICIPATION_RATE:
+                    enrolled.append(pid)
+
+            enrolled_by_ward.append(enrolled)
+
+        total_enrolled = sum(len(ward_children) for ward_children in enrolled_by_ward)
+
+        if total_enrolled == 0:
             self.num_childcare_centres = 0
             return
-
-        # Mumbai City + Mumbai Suburban, June 2024: 5,147 operational
-        # Anganwadi centres serving 379,279 children aged 0--6.  The model
-        # assigns ages 3--5, estimated as 3/7 of that age range.
-        MUMBAI_AWCS = 926 + 4221
-        MUMBAI_CHILDREN_3_TO_5 = (64790 + 314489) * 3 / 7
-        number_of_centres = max(
-            1,
-            round(len(childcare_pids) * MUMBAI_AWCS / MUMBAI_CHILDREN_3_TO_5)
-        )
         childcare_counts_by_ward = [
-        len(self.childcare_users[wardIndex])
-        for wardIndex in range(self.nwards)
+            len(enrolled_by_ward[w]) for w in range(self.nwards)
         ]
-        ward_weights = normalise(childcare_counts_by_ward)
 
-        for cid in range(number_of_centres):
-            wardIndex = int(np.random.choice(range(self.nwards), p=ward_weights))
-            lat, lon = self.sampleRandomLatLon(wardIndex)
-            centre = {
-                "ID": cid,
-                "wardIndex": wardIndex,
-                "lat": lat,
-                "lon": lon,
-                "enrolled": 0,
-            }
-            if self.has_slums:
-                centre["slum"] = int(self.wardData["hd_flag"].iloc[wardIndex])
-            self.childcare_centres.append(centre)
+        active_wards = [
+            w for w in range(self.nwards) if childcare_counts_by_ward[w] > 0
+        ]
 
-        for pid in childcare_pids:
-            child = self.individuals[pid]
-            distances = [
-                distance(child["lat"], child["lon"], centre["lat"], centre["lon"])
-                for centre in self.childcare_centres
+        # ==============================================================
+        # STEP 2: DETERMINE TOTAL NUMBER OF FACILITIES
+        # ==============================================================
+
+        required_facilities = int(np.ceil(total_enrolled / TARGET_AVG_CAPACITY))
+
+        # Every active ward receives at least one facility
+        total_facilities = max(len(active_wards), required_facilities)
+
+        # ==============================================================
+        # STEP 3: DISTRIBUTE FACILITIES ACROSS WARDS (HAMILTON / LARGEST REMAINDER METHOD)
+        # ==============================================================
+
+        ward_facility_counts = [0] * self.nwards
+
+        # Guarantee 1 facility for every active ward
+        for w in active_wards:
+            ward_facility_counts[w] = 1
+
+        remaining_facilities = total_facilities - len(active_wards)
+
+        if remaining_facilities > 0 and total_enrolled > 0:
+            allocated_facilities = 0
+            quota_remainders = []
+
+            for w in active_wards:
+                quota = (
+                    remaining_facilities
+                    * childcare_counts_by_ward[w]
+                    / total_enrolled
+                )
+                floor_value = int(np.floor(quota))
+
+                ward_facility_counts[w] += floor_value
+                allocated_facilities += floor_value
+
+                quota_remainders.append((quota - floor_value, w))
+
+            facilities_left = remaining_facilities - allocated_facilities
+            quota_remainders.sort(key=lambda item: item[0], reverse=True)
+
+            # Distribute remaining facilities using safe modulo indexing
+            for index in range(facilities_left):
+                _, w = quota_remainders[index % len(quota_remainders)]
+                ward_facility_counts[w] += 1
+
+        # ==============================================================
+        # STEP 4: CREATE CHILDCARE CENTRES (WITH BOUNDARY BUFFER HEURISTIC)
+        # ==============================================================
+
+        cid = 0
+        centres_by_ward = {w: [] for w in range(self.nwards)}
+
+        for wardIndex in active_wards:
+            num_facilities_in_ward = ward_facility_counts[wardIndex]
+            if num_facilities_in_ward == 0:
+                continue
+
+            ward_children_pids = self.childcare_users[wardIndex]
+            if not ward_children_pids:
+                continue
+
+            # Gather lat/lon range for boundary filtering
+            lats = np.array([self.individuals[pid]["lat"] for pid in ward_children_pids])
+            lons = np.array([self.individuals[pid]["lon"] for pid in ward_children_pids])
+
+            min_lat, max_lat = lats.min(), lats.max()
+            min_lon, max_lon = lons.min(), lons.max()
+
+            # 15% Interior buffer margin
+            lat_margin = (max_lat - min_lat) * 0.15
+            lon_margin = (max_lon - min_lon) * 0.15
+
+            inner_min_lat = min_lat + lat_margin
+            inner_max_lat = max_lat - lat_margin
+            inner_min_lon = min_lon + lon_margin
+            inner_max_lon = max_lon - lon_margin
+
+            # Filter candidates to children inside the interior 15% bounding box
+            interior_pids = [
+                pid for pid in ward_children_pids
+                if inner_min_lat <= self.individuals[pid]["lat"] <= inner_max_lat
+                and inner_min_lon <= self.individuals[pid]["lon"] <= inner_max_lon
             ]
-            centre_id = int(np.argmin(distances))
-            child["childcare"] = centre_id
-            child["childcareCentreDistance"] = distances[centre_id]
-            self.childcare_centres[centre_id]["enrolled"] += 1
 
-        self.num_childcare_centres = number_of_centres
+            # Fallback to all ward children if 15% margin leaves zero candidates
+            candidate_pids = interior_pids if interior_pids else ward_children_pids
 
+            # Sample anchors from candidate pool
+            anchor_pids = np.random.choice(
+                candidate_pids,
+                size=num_facilities_in_ward,
+                replace=(num_facilities_in_ward > len(candidate_pids))
+            )
+
+            for anchor_pid in anchor_pids:
+                anchor_pid = int(anchor_pid)
+                anchor_data = self.individuals[anchor_pid]
+
+                centre = {
+                    "ID": cid,
+                    "wardIndex": wardIndex,
+                    "lat": float(anchor_data["lat"]),
+                    "lon": float(anchor_data["lon"]),
+                    "enrolled": 0
+                }
+
+                if getattr(self, "has_slums", False):
+                    centre["slum"] = int(self.wardData["hd_flag"].iloc[wardIndex])
+
+                self.childcare_centres.append(centre)
+                centres_by_ward[wardIndex].append(centre)
+                cid += 1
+
+        # ==============================================================
+        # STEP 5: ASSIGN CHILDREN TO NEAREST AVAILABLE WARD CENTRE
+        # ==============================================================
+
+        for wardIndex in active_wards:
+            # Strictly pull centres belonging ONLY to the child's home ward
+            ward_centres = centres_by_ward[wardIndex]
+            participating_children = enrolled_by_ward[wardIndex].copy()
+            
+            # Shuffle to eliminate ID ordering bias
+            np.random.shuffle(participating_children)
+
+            for pid in participating_children:
+                child = self.individuals[pid]
+
+                # If no centres exist in this ward, child remains unassigned (-1)
+                if not ward_centres:
+                    child["childcare"] = -1
+                    child["childcareCentreDistance"] = None
+                    continue
+
+                # Calculate distance only to centres inside child's ward
+                candidate_centres = []
+                for centre in ward_centres:
+                    centre_distance = distance(
+                        child["lat"],
+                        child["lon"],
+                        centre["lat"],
+                        centre["lon"]
+                    )
+                    candidate_centres.append((centre_distance, centre))
+
+                # Sort intra-ward centers by distance ascending
+                candidate_centres.sort(key=lambda x: x[0])
+
+                # Assign to closest intra-ward centre with capacity
+                assigned = False
+                for dist, centre in candidate_centres:
+                    if centre["enrolled"] < MAX_CAPACITY:
+                        child["childcare"] = centre["ID"]
+                        child["childcareCentreDistance"] = dist
+                        centre["enrolled"] += 1
+                        assigned = True
+                        break
+
+                if not assigned:
+                    # Retain unassigned state if all ward centres hit MAX_CAPACITY
+                    child["childcare"] = -1
+                    child["childcareCentreDistance"] = None
+
+        # ==============================================================
+        # STEP 6: WARD-LEVEL SUMMARY
+        # ==============================================================
+
+        print("\n--- Ward-level Childcare Summary ---")
+
+        for wardIndex in range(self.nwards):
+            total_children = len(self.childcare_users[wardIndex])
+            enrolled_children = sum(
+                centre["enrolled"] for centre in centres_by_ward[wardIndex]
+            )
+            number_of_facilities = len(centres_by_ward[wardIndex])
+
+            print(
+                f"Ward {wardIndex:2d}: "
+                f"{total_children:6d} total children | "
+                f"{enrolled_children:6d} enrolled | "
+                f"{number_of_facilities:4d} facilities"
+            )
+
+        print("------------------------------------\n")
+
+        self.num_childcare_centres = len(self.childcare_centres)
     @measure
     def assignSchools(self):
         assert self.houses is not None
@@ -756,7 +987,7 @@ class City:
         assert self.houses is not None
         assert self.individuals is not None
         assert self.schools is not None
-        
+       
         self.workplaces = []
         count = 0
         for wardIndex in range(self.nwards):
@@ -771,7 +1002,7 @@ class City:
                 (lat,lon) = self.sampleRandomLatLon(wardIndex)
                 w["lat"] = lat
                 w["lon"] = lon
-                
+               
                 s = self.sampleWorkplaceSize()
                 oType = self.sampleOfficeType(s)
                 w["officeType"]=oType
@@ -785,7 +1016,7 @@ class City:
                 self.workplaces.append(w)
                 count+=1
         self.num_workplaces = count
-    
+   
     def describe(self):
         print(f"City: {self.name}")
         print(f"Population: {self.num_individuals}")
@@ -799,10 +1030,13 @@ class City:
         print(f"Number of workers: {self.num_workers}")
         print("")
 
+
+
+
     def generate(self, n):
         assert self.wardData is not None
         assert self.ODMatrix is not None
-        
+       
         self.rescale(n)
         self.createHouses()
         self.populateHouses()
@@ -811,7 +1045,7 @@ class City:
         self.assignWorkplaces()
         print("")
         self.describe()
-        
+       
     @measure
     def dump_files(self, output_dir):
         assert self.houses is not None
@@ -819,12 +1053,12 @@ class City:
         assert self.schools is not None
         assert self.childcare_centres is not None
         assert self.workplaces is not None
-        
+       
         assert output_dir is not None
                
-        
+       
         Path(output_dir).mkdir(parents = True, exist_ok = True)
-        
+       
         commonAreas = []
         for i in range(self.nwards):
             c = {"ID":i}
@@ -833,14 +1067,14 @@ class City:
             c["lat"] = lat
             c["lon"] = lon
             commonAreas.append(c)
-        
+       
         fractionPopulations = []
         for i in range(self.nwards):
             w = {"wardNo":i+1}
             w["totalPopulation"] = int(self.wardData["generatedPopulation"].iloc[i])
             w["fracPopulation"] = float(self.wardData["generatedPopulation"].iloc[i] / self.num_individuals)
             fractionPopulations.append(w)
-        
+       
         wardCentreDistances = [ {"ID":i+1} for i in range(self.nwards)]
         for i in range(self.nwards):
             for j in range(self.nwards):
@@ -848,6 +1082,9 @@ class City:
                                                             commonAreas[i]["lon"],
                                                             commonAreas[j]["lat"],
                                                             commonAreas[j]["lon"])
+
+
+
 
         with open(os.path.join(output_dir,outputfiles['houses']), "w+") as f:
             f.write(json.dumps(self.houses))
@@ -864,21 +1101,30 @@ class City:
         with open(os.path.join(output_dir,outputfiles['fractionPopulation']), "w+") as f:
             f.write(json.dumps(fractionPopulations))
         with open(os.path.join(output_dir,outputfiles['wardCentreDistance']), "w+") as f:
-            f.write(json.dumps(wardCentreDistances))     
+            f.write(json.dumps(wardCentreDistances))    
         with open(os.path.join(output_dir,outputfiles['PRG_np_random_state']), "wb+") as f:
             pickle.dump(self.state_np_random,f)
 
-        
+
+
+
+       
     def __init__(self, input_dir, random_seed_dir = None):
         self.reset()
-        
+       
         self.set_city_profile(input_dir)
+
+
+
 
         if random_seed_dir is not None:
             assert fileExists(
                 os.path.join(random_seed_dir, outputfiles['PRG_np_random_state'])
                 ), f"{os.path.join(random_seed_dir, outputfiles['PRG_np_random_state'])} not found"
             self.set_random_seeds(random_seed_dir)
+
+
+
 
         self.save_random_seeds()
         self.set_demographics(input_dir)
@@ -887,7 +1133,7 @@ class City:
         if folderExists(Path(input_dir, "presampled-points")):
             self.set_presampled_points(input_dir)
         else:
-            self.set_geoDF(input_dir) 
+            self.set_geoDF(input_dir)
         self.reorder_wardData_Rows()
         self.set_community_centres()
 
@@ -905,7 +1151,7 @@ def validate_slum_ages(city, df_ind, plots_folder=None):
          .sort_index(ascending=True)),
         'r-o',
         label='Instantiation')
-        
+       
     plt.plot(age_values, age_distribution, 'b-',label='Data')
     plt.xlabel('Slum_Age')
     plt.ylabel('Density')
@@ -913,12 +1159,12 @@ def validate_slum_ages(city, df_ind, plots_folder=None):
     plt.grid(True)
     plt.legend()
     plt.xticks(np.arange(0,81,10), np.concatenate((age_values[np.arange(0,71,10)], ['80+'])) )
-    if plots_folder is not None: 
+    if plots_folder is not None:
         plt.savefig(os.path.join(plots_folder, 'age_slum.png'))
     else:
         plt.show()
     plt.close()
-    
+   
 @measure
 def validate_non_slum_ages(city, df_ind, plots_folder=None):
     age_values, age_distribution = compute_age_distribution(city.age_weights)
@@ -932,7 +1178,7 @@ def validate_non_slum_ages(city, df_ind, plots_folder=None):
          .sort_index(ascending=True)),
         'r-o',
         label='Instantiation')
-    
+   
     plt.plot(age_values, age_distribution, 'b-',label='Data')
     plt.xlabel('Age')
     plt.ylabel('Density')
@@ -940,17 +1186,23 @@ def validate_non_slum_ages(city, df_ind, plots_folder=None):
     plt.grid(True)
     plt.legend()
     plt.xticks(np.arange(0,81,10), np.concatenate((age_values[np.arange(0,71,10)], ['80+'])) )
-    if plots_folder is not None: 
+    if plots_folder is not None:
         plt.savefig(os.path.join(plots_folder, 'age_non_slum.png'))
     else:
         plt.show()
     plt.close()
 
 
+
+
+
+
+
+
 @measure
 def validate_householdsizes(city, df_ind, plots_folder=None):    
     household_sizes, household_distribution = compute_household_size_distribution(
-        city.householdsize_bins, 
+        city.householdsize_bins,
         city.householdsize_weights
     )
     plt.plot((df_ind
@@ -964,11 +1216,17 @@ def validate_householdsizes(city, df_ind, plots_folder=None):
     )
     plt.plot(household_sizes , household_distribution, color="blue", label='Data')
 
+
+
+
     plt.xlabel('Household-size')
     plt.ylabel('Density')
     plt.title('Distribution of household-size')
     plt.grid(True)
     plt.legend()
+
+
+
 
     if plots_folder is not None:
         plt.savefig(os.path.join(plots_folder,'household_size.png'))
@@ -977,51 +1235,62 @@ def validate_householdsizes(city, df_ind, plots_folder=None):
     plt.close()
 @measure
 def validate_childcaresizes(city, df_ind, plots_folder=None):
-
-    df_childcare = df_ind.dropna(subset=["childcare"])
-
+    df_childcare = df_ind[
+        df_ind["childcare"].notna()
+        & (df_ind["childcare"] != -1)
+    ]
     if df_childcare.empty:
         print("No childcare users generated; skipping childcare-size validation.")
         return
-
-    # Number of children assigned to each childcare centre
-    centre_sizes = (
+    assigned_counts = (
         df_childcare
         .groupby("childcare")["id"]
         .count()
     )
-
-    # Childcare size bins
-    bins = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, np.inf]
-
+    if hasattr(city, "childcare_centres"):
+        all_centre_ids = pd.Series(
+            [centre["ID"] for centre in city.childcare_centres]
+        )
+    else:
+        all_centre_ids = pd.Series(assigned_counts.index)
+    centre_sizes = (
+        all_centre_ids
+        .map(assigned_counts)
+        .fillna(0)
+        .astype(int)
+    )
+    if centre_sizes.empty:
+        print("No childcare centres generated; skipping childcare-size validation.")
+        return
+    bins = [0,20,40,60,80,100, np.inf]
     labels = [
-        "0-10",
-        "10-20",
-        "20-30",
-        "30-40",
-        "40-50",
-        "50-60",
-        "60-70",
-        "70-80",
-        "80-90",
-        "90+"
+        "0-20",
+        "20-40",
+        "40-60",
+        "60-80",
+        "80-100",
+        "100+"
     ]
 
-    # Put every centre into a size bin
+
     size_groups = pd.cut(
         centre_sizes,
         bins=bins,
         labels=labels,
-        right=False
+        right=True,
+        include_lowest=True
     )
 
-    # Proportion of centres in each bin
+
     size_distribution = (
         size_groups
         .value_counts(normalize=True)
-        .sort_index()
+        .reindex(labels, fill_value=0)
     )
-
+    maximum_proportion = float(size_distribution.max())
+    y_axis_maximum = np.ceil(maximum_proportion / 0.05) * 0.05
+    y_axis_maximum = max(0.05, y_axis_maximum)
+    plt.figure(figsize=(7, 5))
     x = np.arange(len(labels))
 
     plt.bar(
@@ -1033,20 +1302,20 @@ def validate_childcaresizes(city, df_ind, plots_folder=None):
     )
 
     plt.xticks(x, labels, rotation=45)
-
+    plt.yticks(
+        np.arange(0, y_axis_maximum + 0.001, 0.05)
+    )
+    plt.ylim(0, y_axis_maximum + 0.01)
     plt.xlabel("Childcare centre size")
     plt.ylabel("Density")
     plt.title("Distribution of childcare centre sizes")
-
-    plt.grid(True)
+    plt.grid(True, alpha=0.6)
     plt.legend()
-
+    plt.tight_layout()
     if plots_folder is not None:
+        os.makedirs(plots_folder, exist_ok=True)
         plt.savefig(
-            os.path.join(
-                plots_folder,
-                "childcare_size.png"
-            ),
+            os.path.join(plots_folder, "childcare_size.png"),
             bbox_inches="tight"
         )
     else:
@@ -1070,7 +1339,7 @@ def validate_schoolsizes(city, df_ind, plots_folder=None):
             label="Instantiation"
     )
     plt.plot(weights, label='Data', color="blue")
-    
+   
     bins = list(range(len(weights)))
     labels = [str(a*100) for a in bins[:-1]] + [str(bins[-1]*100)+'+']
     plt.xticks(bins[1:], labels[1:])
@@ -1082,6 +1351,58 @@ def validate_schoolsizes(city, df_ind, plots_folder=None):
     else:
         plt.show()
     plt.close()
+@measure
+def validate_childcare_children_vs_facilities(city, plots_folder=None):
+
+
+    # Number of childcare-aged children in each ward
+    children_by_ward = [
+        len(city.childcare_users[wardIndex])
+        for wardIndex in range(city.nwards)
+    ]
+
+
+    # Number of generated childcare facilities in each ward
+    facilities_by_ward = [
+        sum(
+            1 for centre in city.childcare_centres
+            if centre["wardIndex"] == wardIndex
+        )
+        for wardIndex in range(city.nwards)
+    ]
+
+
+    # Scatter plot
+    plt.scatter(
+        children_by_ward,
+        facilities_by_ward,
+        alpha=0.7
+    )
+
+
+    plt.xlabel("Number of childcare-aged children")
+    plt.ylabel("Number of generated childcare facilities")
+    plt.title("Childcare-aged children vs facilities by ward")
+    plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
+   
+    plt.grid(True, alpha=0.3)
+
+
+    if plots_folder is not None:
+        plt.savefig(
+            os.path.join(
+                plots_folder,
+                "childcare_children_vs_facilities.png"
+            ),
+            bbox_inches="tight",
+            dpi=300
+        )
+    else:
+        plt.show()
+
+
+    plt.close()
+
 
 @measure
 def validate_workplacesizes(city, df_ind, plots_folder=None):
@@ -1106,6 +1427,9 @@ def validate_workplacesizes(city, df_ind, plots_folder=None):
     else:
         plt.show()
     plt.close()
+
+
+
 
 @measure
 def validate_commutedistances(city, df_ind, df_work, plots_folder=None):
@@ -1146,6 +1470,9 @@ def validate_commutedistances(city, df_ind, df_work, plots_folder=None):
         plt.show()
     plt.close()
 
+
+
+
 def validate(city, plots_folder=None):
     df_ind = pd.DataFrame(city.individuals)
     df_work = pd.DataFrame(city.workplaces)
@@ -1154,16 +1481,21 @@ def validate(city, plots_folder=None):
         validate_slum_ages(city, df_ind,  plots_folder=plots_folder)
     validate_householdsizes(city, df_ind, plots_folder=plots_folder)
     validate_childcaresizes(city,df_ind,plots_folder=plots_folder)
+    validate_childcare_children_vs_facilities(city,plots_folder=plots_folder)
     validate_schoolsizes(city, df_ind,  plots_folder=plots_folder)
     validate_workplacesizes(city, df_ind, plots_folder=plots_folder)
     validate_commutedistances(city, df_ind, df_work, plots_folder=plots_folder)
 
 
+
+
 # In[ ]:
 
 
+
+
 def main():
-    
+   
     default_pop = 100000
     default_ibasepath = 'data/base/bangalore/'
     default_obasepath = 'data/bangalore-100K/'
@@ -1175,15 +1507,18 @@ def main():
     my_parser.add_argument('--cohorts', help='[for cohorts] to instantiate cohorts in mumbai locals', action="store_true")
     my_parser.add_argument('-s', help='[for debug] restore random seed from folder', default=None)
 
+
     args = my_parser.parse_args()
     population = int(args.n)
     input_dir = args.i
     output_dir = args.o
 
+
     if len(sys.argv)==1:
         print("No arguments passed.\n")
         my_parser.print_help()
         print("\n Assuming default values.\n")
+
 
     print(f"input_folder: {input_dir}")
     print(f"output_folder: {output_dir}")
@@ -1191,31 +1526,42 @@ def main():
     city = City(input_dir, random_seed_dir = args.s)
     city.generate(population)
 
+
+
+
     city.dump_files(output_dir)
     if args.validate:
         validate(city,output_dir)
+
 
 if __name__ == "__main__":
     main()
 
 
+
+
 # In[ ]:
+
+
 
 
 ###### OLDER VALIDATION Scripts. Keeping it for just comparison in case I missed something
 @measure
 def validate_old(city, plots_folder=None):
-    ### I am just copying the validation scripts for now. 
+    ### I am just copying the validation scripts for now.
     ### Not going through them carefully
-    
+   
     a_workplacesize = 3.26
     c_workplacesize = 0.97
     m_max_workplacesize = 2870
     avgSchoolsize = 300
 
+
+
+
     age_values, age_distribution = compute_age_distribution(city.age_weights)
     household_sizes, household_distribution = compute_household_size_distribution(
-        city.householdsize_bins, 
+        city.householdsize_bins,
         city.householdsize_weights
         )
     schoolsize_values, schoolsize_distribution = extrapolate_school_size_distribution(
@@ -1223,9 +1569,9 @@ def validate_old(city, plots_folder=None):
         avgSchoolsize
         )
     workplacesize_distribution = workplaces_size_distribution()
-    
+   
     df1 = pd.DataFrame(city.individuals)
-    
+   
     print("Validating age distribution in instantiation...",end='',flush=True)
     plt.plot(df1['age'].value_counts(normalize=True).sort_index(ascending=True), 'r-o',label='Instantiation')
     plt.plot(age_distribution, 'b-',label='Data')
@@ -1235,13 +1581,13 @@ def validate_old(city, plots_folder=None):
     plt.grid(True)
     plt.legend()
     plt.xticks(np.arange(0,81,10), np.concatenate((age_values[np.arange(0,71,10)], ['80+'])) )
-    if plots_folder is not None: 
+    if plots_folder is not None:
         plt.savefig(os.path.join(plots_folder, 'age.png'))
     else:
         plt.show()
     plt.close()
     print("done.",flush=True)
-    
+   
     print("Validating household-size in instantiation...",end='',flush=True)
     house = df1['household'].value_counts().values
     unique_elements, counts_elements = np.unique(house, return_counts=True)
@@ -1261,6 +1607,9 @@ def validate_old(city, plots_folder=None):
     plt.close()
     print("done.",flush=True)
 
+
+
+
     print("Validating school-size in instantiation...",end='',flush=True)
     schoolsizeDistribution = city.schoolsize_weights
     full_frame = np.floor(
@@ -1270,6 +1619,9 @@ def validate_old(city, plots_folder=None):
                     )[~np.isnan(np.unique(df1['school'].values))]
                 ])/100
         ).astype(int)
+
+
+
 
     schoolsize_output = [
         len(np.where(full_frame == j)[0]) for j in np.arange(
@@ -1282,7 +1634,7 @@ def validate_old(city, plots_folder=None):
                     len(schoolsizeDistribution)
                     )
                 ])
-    
+   
     plt.plot(schoolsize_output,'r-o', label='Instantiation')
     plt.plot(schoolsizeDistribution,'b-', label='Data')
     xlabel = np.arange(0,len(schoolsizeDistribution))
@@ -1299,6 +1651,9 @@ def validate_old(city, plots_folder=None):
     plt.close()
     print("done.",flush=True)
 
+
+
+
     # generate workplace size distribution
     a=a_workplacesize
     c=c_workplacesize
@@ -1308,6 +1663,9 @@ def validate_old(city, plots_folder=None):
     for m in range(m_max):
         p_nplus[m] =  ((( (1+m_max/a)/(1+m/a))**c) -1) / (((1+m_max/a)**c) -1)
 
+
+
+
     p_nminus = 1.0 - p_nplus
     p_n = np.arange(float(m_max))
     prev=0.0
@@ -1316,8 +1674,17 @@ def validate_old(city, plots_folder=None):
         prev = p_nminus[m]
 
 
+
+
+
+
+
+
     # workplace size
     print("Validating workplace-size in instantiation...",end='',flush=True)
+
+
+
 
     full_frame = np.array([
         len(np.where(df1['workplace'] == i)[0]) for i in np.unique(
@@ -1344,9 +1711,12 @@ def validate_old(city, plots_folder=None):
         plt.show()
     plt.close()
     print("done.",flush=True)
-    
-    
+   
+   
     wp = pd.DataFrame(city.workplaces)
+
+
+
 
     print("Validating workplace commute distance in instantiation...",end='',flush=True)
     full_frame = np.array([
@@ -1392,3 +1762,9 @@ def validate_old(city, plots_folder=None):
         plt.show()
     plt.close()
     print("done.",flush=True)
+
+
+
+
+
+
